@@ -5,13 +5,24 @@ const statusOverlay = document.getElementById("status-overlay");
 const predictionEl = document.getElementById("prediction");
 const confidenceEl = document.getElementById("confidence");
 const logOutput = document.getElementById("log-output");
-const restartButton = document.getElementById("restart-button");
+const recordButton = document.getElementById("record-button");
+const predictButton = document.getElementById("predict-button");
+const resetButton = document.getElementById("reset-button");
 const apiUrlInput = document.getElementById("api-url");
+const progressFill = document.getElementById("progress-fill");
+const dialog = document.getElementById("prediction-dialog");
+const dialogPrediction = document.getElementById("dialog-prediction");
+const dialogConfidence = document.getElementById("dialog-confidence");
+const dialogClose = document.getElementById("dialog-close");
 
 const SEQUENCE_LENGTH = 32;
 const FEATURE_DIM = 2 * 21 * 3;
+const rawFrames = [];
 const buffer = [];
 let isPredicting = false;
+let isRecording = false;
+let recordAnimationId = null;
+const RECORD_DURATION_MS = 5000;
 
 function log(message) {
   const timestamp = new Date().toLocaleTimeString();
@@ -38,15 +49,15 @@ function flattenHands(left, right) {
   return flat;
 }
 
-function pushFrame(vec) {
-  if (buffer.length === SEQUENCE_LENGTH) buffer.shift();
-  buffer.push(vec);
+function updateProgress(ratio) {
+  progressFill.style.width = `${Math.min(ratio, 1) * 100}%`;
 }
 
 async function requestPrediction() {
   if (buffer.length < SEQUENCE_LENGTH || isPredicting) return;
   isPredicting = true;
   statusOverlay.textContent = "Predicting...";
+  predictButton.disabled = true;
   try {
     const response = await fetch(apiUrlInput.value.trim(), {
       method: "POST",
@@ -59,12 +70,16 @@ async function requestPrediction() {
     const data = await response.json();
     predictionEl.textContent = data.prediction;
     confidenceEl.textContent = `${(data.confidence * 100).toFixed(1)}%`;
+    dialogPrediction.textContent = data.prediction;
+    dialogConfidence.textContent = `Confidence: ${(data.confidence * 100).toFixed(1)}%`;
+    dialog.showModal();
     statusOverlay.textContent = "Streaming";
   } catch (error) {
     log(`Prediction error: ${error.message}`);
     statusOverlay.textContent = "Error – check logs";
   } finally {
     isPredicting = false;
+    predictButton.disabled = buffer.length !== SEQUENCE_LENGTH;
   }
 }
 
@@ -108,20 +123,26 @@ function drawResults(results) {
 
 function onResults(results) {
   drawResults(results);
-  const frameVec = buildFrameVector(results);
-  pushFrame(frameVec);
-  if (buffer.length < SEQUENCE_LENGTH) {
-    statusOverlay.textContent = `Collecting frames (${buffer.length}/${SEQUENCE_LENGTH})`;
-  } else {
-    requestPrediction();
+  if (isRecording) {
+    const frameVec = buildFrameVector(results);
+    rawFrames.push(frameVec);
   }
 }
 
 function startPipeline() {
+  rawFrames.length = 0;
   buffer.length = 0;
   predictionEl.textContent = "–";
   confidenceEl.textContent = "–";
   statusOverlay.textContent = "Initializing...";
+  progressFill.style.width = "0%";
+  predictButton.disabled = true;
+  recordButton.disabled = false;
+  isRecording = false;
+  if (recordAnimationId) {
+    cancelAnimationFrame(recordAnimationId);
+    recordAnimationId = null;
+  }
 
   const hands = new Hands({
     locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/${file}`,
@@ -146,6 +167,77 @@ function startPipeline() {
   statusOverlay.textContent = "Streaming";
 }
 
-restartButton.addEventListener("click", startPipeline);
+function resampleFrames(frames, targetLength) {
+  if (!frames.length) return [];
+  const indices = Array.from(
+    { length: targetLength },
+    (_, i) => Math.floor((i / (targetLength - 1)) * (frames.length - 1))
+  );
+  return indices.map((idx) => frames[idx]);
+}
+
+function finishRecording() {
+  isRecording = false;
+  recordAnimationId = null;
+  recordButton.disabled = false;
+  if (rawFrames.length < SEQUENCE_LENGTH) {
+    statusOverlay.textContent = "Not enough frames collected. Try again.";
+    rawFrames.length = 0;
+    progressFill.style.width = "0%";
+    return;
+  }
+  const resampled = resampleFrames(rawFrames, SEQUENCE_LENGTH);
+  buffer.splice(0, buffer.length, ...resampled);
+  rawFrames.length = 0;
+  predictButton.disabled = false;
+  statusOverlay.textContent = "Frames ready – click Show Prediction";
+}
+
+recordButton.addEventListener("click", () => {
+  rawFrames.length = 0;
+  buffer.length = 0;
+  predictButton.disabled = true;
+  isRecording = true;
+  recordButton.disabled = true;
+  progressFill.style.width = "0%";
+  statusOverlay.textContent = "Recording...";
+
+  const startTime = performance.now();
+  const step = () => {
+    if (!isRecording) return;
+    const elapsed = performance.now() - startTime;
+    updateProgress(elapsed / RECORD_DURATION_MS);
+    if (elapsed >= RECORD_DURATION_MS) {
+      finishRecording();
+    } else {
+      recordAnimationId = requestAnimationFrame(step);
+    }
+  };
+  recordAnimationId = requestAnimationFrame(step);
+});
+
+predictButton.addEventListener("click", () => {
+  if (buffer.length === SEQUENCE_LENGTH) {
+    requestPrediction();
+  }
+});
+
+resetButton.addEventListener("click", () => {
+  rawFrames.length = 0;
+  buffer.length = 0;
+  progressFill.style.width = "0%";
+  predictButton.disabled = true;
+  recordButton.disabled = false;
+  isRecording = false;
+  if (recordAnimationId) {
+    cancelAnimationFrame(recordAnimationId);
+    recordAnimationId = null;
+  }
+  statusOverlay.textContent = "Streaming";
+});
+
+dialogClose.addEventListener("click", () => {
+  dialog.close();
+});
 
 startPipeline();

@@ -66,9 +66,14 @@ main {
 
 .controls {
   display: flex;
-  gap: 1rem;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.control-buttons {
+  display: flex;
+  gap: 0.75rem;
   flex-wrap: wrap;
-  align-items: center;
 }
 
 label {
@@ -100,4 +105,42 @@ button {
   font-size: 0.9rem;
   max-height: 220px;
   overflow-y: auto;
+}
+
+.progress-panel {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.progress-label {
+  margin-bottom: 0.5rem;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+
+#progress-fill {
+  height: 100%;
+  width: 0%;
+  background: #34d399;
+  transition: width 0.2s ease;
+}
+
+dialog {
+  border: none;
+  border-radius: 12px;
+  padding: 1.5rem;
+  background: #0f172a;
+  color: #f8fafc;
+  min-width: 280px;
+}
+
+dialog::backdrop {
+  background: rgba(15, 23, 42, 0.7);
 }

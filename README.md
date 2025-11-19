@@ -89,6 +89,45 @@ arsl-word-level-detection/
 6. **Deploy/Extend**  
    Export the saved weights (`arsl_tcn.pt`) for deployment, or extend the model with LSTMs/Transformers if longer sequences or multimodal inputs are needed.
 
+## Frontend Instructions
+
+Static browser client for the Arabic word-level sign recognizer. The workflow:
+
+1. Capture webcam frames via `navigator.mediaDevices`.
+2. Run **MediaPipe Hands** in the browser (WebGL) to extract 3D landmarks per hand.
+3. Normalize and flatten coordinates to match the training pipeline (126 features per frame).
+4. Maintain a rolling buffer of 32 frames.
+5. POST `{ sequence: buffer }` to the FastAPI `/predict` endpoint.
+
+### Requirements
+
+- Backend running locally:
+  ```bash
+  uvicorn arsl-word-level-detection.api_server:app --reload
+  ```
+- If serving frontend from another origin, enable CORS on the FastAPI app.
+
+### Local Preview
+
+```bash
+cd project/sign-language-detection/arsl-word-level-detection/frontend
+python -m http.server 4173
+```
+
+Open `http://localhost:4173`, allow webcam access, and keep the backend URL field as `http://localhost:8000/predict`.
+
+Workflow:
+1. Click **Start Recording** to capture a 5-second clip (progress bar fills over 5s). All frames are stored and later resampled to the 32-frame format the model expects.
+2. Once recording finishes the **Show Prediction** button becomes active—click it to query the backend.
+3. A dialog shows the predicted word + confidence. Use **Reset** to clear the buffer and record again.
+
+### Deployment Notes
+
+- Host `index.html`, `styles.css`, and `main.js` on any static host (Netlify, GitHub Pages, etc.).
+- Update the default backend URL to your deployed FastAPI origin.
+- Ensure HTTPS for both frontend and backend.
+
+
 ## Future Improvements
 
 - **Augmentation**: KArSL includes variations across signers, but you can add landmark jitter or random frame dropping to improve generalization.

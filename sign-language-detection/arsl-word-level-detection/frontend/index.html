@@ -31,12 +31,28 @@
         Backend URL
         <input id="api-url" type="text" value="http://localhost:8000/predict" />
       </label>
-      <button id="restart-button">Restart Camera</button>
+      <div class="control-buttons">
+        <button id="record-button">Start Recording</button>
+        <button id="predict-button" disabled>Show Prediction</button>
+        <button id="reset-button">Reset</button>
+      </div>
+    </section>
+    <section class="progress-panel">
+      <div class="progress-label">Frame Collection Progress</div>
+      <div class="progress-bar">
+        <div id="progress-fill"></div>
+      </div>
     </section>
     <section class="log">
       <h2>Log</h2>
       <pre id="log-output"></pre>
     </section>
+    <dialog id="prediction-dialog">
+      <h2>Predicted Word</h2>
+      <p id="dialog-prediction">–</p>
+      <p id="dialog-confidence">–</p>
+      <button id="dialog-close">Close</button>
+    </dialog>
   </main>
   <script type="module" src="main.js"></script>
 </body>
