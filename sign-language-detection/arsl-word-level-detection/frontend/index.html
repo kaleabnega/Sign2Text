@@ -15,7 +15,8 @@
   <main>
     <h1>Sign2Text – Arabic Sign Language (Word-Level)</h1>
     <p>
-      Browser client that extracts MediaPipe landmarks, buffers 32 frames, and queries the FastAPI backend for predictions.
+      Browser client that extracts MediaPipe landmarks, buffers 32 frames, and queries the FastAPI backend for
+      predictions.
     </p>
     <section class="video-wrapper">
       <video id="input-video" autoplay playsinline></video>
@@ -29,7 +30,8 @@
     <section class="controls">
       <label>
         Backend URL
-        <input id="api-url" type="text" value="http://localhost:8000/predict" />
+        <!-- <input id="api-url" type="text" value="http://localhost:8000/predict" /> -->
+        <input id="api-url" type="text" value=" https://sign2text-ezpb.onrender.com/predict" />
       </label>
       <div class="control-buttons">
         <button id="record-button">Start Recording</button>
